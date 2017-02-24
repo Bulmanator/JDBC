@@ -9,6 +9,7 @@ public class Column {
     private String type;
     private boolean nullable;
     private boolean primary;
+    private boolean hasReference;
     private String reference;
 
     public Column(ResultSet set) throws SQLException {
@@ -17,6 +18,7 @@ public class Column {
         nullable = set.getString("IS_NULLABLE").toLowerCase().equals("yes");
         primary = false;
         reference = "";
+        hasReference = false;
     }
 
     public String getName() { return name; }
@@ -25,11 +27,16 @@ public class Column {
 
     public boolean isPrimary() { return primary; }
 
+    public boolean hasReference() { return hasReference; }
+
     public String getReference() { return reference; }
 
-    public void setPrimary(boolean primary) { this.primary = primary; }
+    public void setPrimary() { this.primary = true; }
 
-    public void setReference(String reference) { this.reference = reference; }
+    public void setReference(String reference) {
+        this.reference = reference;
+        hasReference = true;
+    }
 
     @Override
     public String toString() {
