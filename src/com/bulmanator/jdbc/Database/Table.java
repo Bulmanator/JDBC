@@ -1,5 +1,7 @@
 package com.bulmanator.jdbc.Database;
 
+import com.bulmanator.jdbc.Main;
+
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -33,8 +35,10 @@ public class Table {
         }
 
         int primaryCount = 0;
+
         while (primaryKeys.next()) {
             String primaryKey = primaryKeys.getString("COLUMN_NAME");
+
             if(columns.containsKey(primaryKey)) {
                 columns.get(primaryKey).setPrimary();
                 primaryCount++;
@@ -53,6 +57,11 @@ public class Table {
                 hasForeign = true;
             }
         }
+
+        Collection<Column> columns = getColumns();
+        for(Column column : columns) {
+
+        }
     }
 
     public String getName() { return name; }
@@ -66,21 +75,22 @@ public class Table {
 
         Collection<Column> columns = this.columns.values();
 
-        if(!multiplePrimary) {
+       /* if(!multiplePrimary) {
             for(Column column : columns) {
                 if(column.isPrimary()) {
                     query += "    " + column.getName() + " " + column.getType() + " PRIMARY KEY,\n";
                 }
             }
-        }
+        }*/
 
         for(Column column : columns) {
-            if(column.isPrimary() && !multiplePrimary) continue;
+          //  if(column.isPrimary()) continue;
 
-            query += "    " + column.getName() + " " + column.getType() + ",\n";
+            query += "    " + column.getName() + " " + column.getType()
+                    + (!column.isNullable() ? " NOT NULL" : "") + ",\n";
         }
 
-        if(multiplePrimary) {
+     //   if(multiplePrimary) {
             Column[] array = new Column[columns.size()];
             array = columns.toArray(array);
             query += "    PRIMARY KEY (";
@@ -94,7 +104,7 @@ public class Table {
 
             query = query.substring(0, query.lastIndexOf(", "));
             query += "),\n";
-        }
+       // }
 
         for(Column column : columns) {
             if(column.hasReference()) {
@@ -108,6 +118,8 @@ public class Table {
 
         return query;
     }
+
+    public Collection<Column> getColumns() { return columns.values(); }
 
     @Override
     public String toString() {
