@@ -1,0 +1,14 @@
+<component name="ArtifactManager">
+  <artifact name="JDBC Coursework:jar">
+    <output-path>$PROJECT_DIR$/Output</output-path>
+    <root id="root">
+      <element id="archive" name="JDBC Coursework.jar">
+        <element id="module-output" name="JDBC Coursework" />
+      </element>
+      <element id="library" level="project" name="sqlite-jdbc-3.7.2" />
+      <element id="directory" name="Databases">
+        <element id="dir-copy" path="$PROJECT_DIR$/Content" />
+      </element>
+    </root>
+  </artifact>
+</component>

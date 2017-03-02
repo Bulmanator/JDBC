@@ -5,6 +5,8 @@ import com.bulmanator.jdbc.Main;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 
@@ -13,16 +15,19 @@ public class Table {
     private String name;
     private HashMap<String, Column> columns;
     private boolean hasForeign;
-    private boolean multiplePrimary;
 
+    /**
+     * Generates all of the columns stored within the table from the given name
+     * @param name The name of the table to create
+     * @param metadata The metadata of the database the table is contained within
+     * @throws SQLException Thrown if any SQL exceptions
+     */
     public Table(String name, DatabaseMetaData metadata) throws SQLException {
 
         this.name = name;
         columns = new HashMap<>();
         hasForeign = false;
-        multiplePrimary = false;
 
-        // This is enough to get all of
         ResultSet columnData = metadata.getColumns(null, null, name, null);
         ResultSet primaryKeys = metadata.getPrimaryKeys(null, null, name);
         ResultSet foreignKeys = metadata.getImportedKeys(null, null, name);
@@ -45,8 +50,6 @@ public class Table {
             }
         }
 
-        multiplePrimary = primaryCount > 1;
-
         while(foreignKeys.next()) {
             String key = foreignKeys.getString("FKCOLUMN_NAME");
             if(columns.containsKey(key)) {
@@ -57,11 +60,6 @@ public class Table {
                 hasForeign = true;
             }
         }
-
-        Collection<Column> columns = getColumns();
-        for(Column column : columns) {
-
-        }
     }
 
     public String getName() { return name; }
@@ -71,55 +69,75 @@ public class Table {
     public boolean hasForeign() { return hasForeign; }
 
     public String getCreateQuery() {
-        String query = "CREATE TABLE " + name + " (\n";
+        String query = "CREATE TABLE " + name + " (";
 
         Collection<Column> columns = this.columns.values();
 
-       /* if(!multiplePrimary) {
-            for(Column column : columns) {
-                if(column.isPrimary()) {
-                    query += "    " + column.getName() + " " + column.getType() + " PRIMARY KEY,\n";
-                }
-            }
-        }*/
-
         for(Column column : columns) {
-          //  if(column.isPrimary()) continue;
-
-            query += "    " + column.getName() + " " + column.getType()
-                    + (!column.isNullable() ? " NOT NULL" : "") + ",\n";
+            query += column.getName() + " " + column.getType()
+                    + (!column.isNullable() ? " NOT NULL" : "") + ", ";
         }
 
-     //   if(multiplePrimary) {
-            Column[] array = new Column[columns.size()];
-            array = columns.toArray(array);
-            query += "    PRIMARY KEY (";
-            for(int i = 0; i < columns.size(); i++) {
-                Column column = array[i];
+        Column[] array = new Column[columns.size()];
+        array = columns.toArray(array);
+        query += "PRIMARY KEY (";
+        for(int i = 0; i < columns.size(); i++) {
+            Column column = array[i];
 
-                if(column.isPrimary()) {
-                    query += column.getName() + ", ";
-                }
+            if(column.isPrimary()) {
+                query += column.getName() + ", ";
             }
+        }
 
-            query = query.substring(0, query.lastIndexOf(", "));
-            query += "),\n";
-       // }
+        query = query.substring(0, query.lastIndexOf(", "));
+        query += "), ";
 
         for(Column column : columns) {
             if(column.hasReference()) {
-                query += "    FOREIGN KEY (" + column.getName() + ") REFERENCES " + column.getReference() + ",\n";
+                query += "FOREIGN KEY (" + column.getName() + ") REFERENCES " + column.getReference() + ", ";
             }
         }
 
         query = query.substring(0, query.lastIndexOf(","));
 
-        query += "\n);";
+        query += ");";
 
         return query;
     }
 
     public Collection<Column> getColumns() { return columns.values(); }
+
+    public ArrayList<String> getInsertSatements(Statement statement) throws SQLException {
+        ResultSet data = statement.executeQuery("SELECT * FROM " + name);
+
+//        Main.printResultSet(data);
+
+        Collection<Column> columns = getColumns();
+        ArrayList<String> statements = new ArrayList<>();
+
+        while (data.next()) {
+            String insert = "INSERT INTO " + name + " VALUES (";
+            for (Column column : columns) {
+                if (column.getType().toLowerCase().contains("varchar")) {
+                    String value = data.getString(column.getName());
+                    insert += ("'" + value + "', ");
+                } else if (column.getType().toLowerCase().contains("int")) {
+                    int value = data.getInt(column.getName());
+                    insert += (value) + ", ";
+                }
+                else {
+                    System.out.println("Other Value!");
+                }
+            }
+
+            insert = insert.substring(0, insert.lastIndexOf(","));
+            insert += ");";
+
+            statements.add(insert);
+        }
+
+        return statements;
+    }
 
     @Override
     public String toString() {
