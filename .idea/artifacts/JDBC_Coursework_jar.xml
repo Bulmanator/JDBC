@@ -7,7 +7,7 @@
       </element>
       <element id="library" level="project" name="sqlite-jdbc-3.7.2" />
       <element id="directory" name="Databases">
-        <element id="dir-copy" path="$PROJECT_DIR$/Content" />
+        <element id="dir-copy" path="$PROJECT_DIR$/Databases" />
       </element>
     </root>
   </artifact>

@@ -15,6 +15,7 @@ public class Table {
     private String name;
     private HashMap<String, Column> columns;
     private boolean hasForeign;
+    private ArrayList<String> referenceTables;
 
     /**
      * Generates all of the columns stored within the table from the given name
@@ -26,6 +27,7 @@ public class Table {
 
         this.name = name;
         columns = new HashMap<>();
+        referenceTables = new ArrayList<>();
         hasForeign = false;
 
         ResultSet columnData = metadata.getColumns(null, null, name, null);
@@ -39,14 +41,11 @@ public class Table {
             columns.put(columnName, column);
         }
 
-        int primaryCount = 0;
-
         while (primaryKeys.next()) {
             String primaryKey = primaryKeys.getString("COLUMN_NAME");
 
             if(columns.containsKey(primaryKey)) {
                 columns.get(primaryKey).setPrimary();
-                primaryCount++;
             }
         }
 
@@ -55,8 +54,8 @@ public class Table {
             if(columns.containsKey(key)) {
                 String foreignTable = foreignKeys.getString("PKTABLE_NAME");
                 String foreignKey = foreignKeys.getString("PKCOLUMN_NAME");
-
                 columns.get(key).setReference(foreignTable + "(" + foreignKey + ")");
+                referenceTables.add(foreignTable);
                 hasForeign = true;
             }
         }
@@ -69,18 +68,18 @@ public class Table {
     public boolean hasForeign() { return hasForeign; }
 
     public String getCreateQuery() {
-        String query = "CREATE TABLE " + name + " (";
+        String query = "CREATE TABLE " + name + " (\n";
 
         Collection<Column> columns = this.columns.values();
 
         for(Column column : columns) {
-            query += column.getName() + " " + column.getType()
-                    + (!column.isNullable() ? " NOT NULL" : "") + ", ";
+            query += "    " + column.getName() + " " + column.getType()
+                    + (!column.isNullable() ? " NOT NULL" : "") + ",\n";
         }
 
         Column[] array = new Column[columns.size()];
         array = columns.toArray(array);
-        query += "PRIMARY KEY (";
+        query += "    PRIMARY KEY (";
         for(int i = 0; i < columns.size(); i++) {
             Column column = array[i];
 
@@ -90,17 +89,17 @@ public class Table {
         }
 
         query = query.substring(0, query.lastIndexOf(", "));
-        query += "), ";
+        query += "),\n";
 
         for(Column column : columns) {
             if(column.hasReference()) {
-                query += "FOREIGN KEY (" + column.getName() + ") REFERENCES " + column.getReference() + ", ";
+                query += "    FOREIGN KEY (" + column.getName() + ") REFERENCES " + column.getReference() + ",\n";
             }
         }
 
         query = query.substring(0, query.lastIndexOf(","));
 
-        query += ");";
+        query += "\n);";
 
         return query;
     }
@@ -120,6 +119,16 @@ public class Table {
             for (Column column : columns) {
                 if (column.getType().toLowerCase().contains("varchar")) {
                     String value = data.getString(column.getName());
+
+                    if(value.contains("'")) {
+                        String[] split = value.split("'");
+                        value = split[0];
+                        for(int i = 1; i < split.length; i++) {
+                            value += "''" + split[i];
+                        }
+
+                    }
+
                     insert += ("'" + value + "', ");
                 } else if (column.getType().toLowerCase().contains("int")) {
                     int value = data.getInt(column.getName());
@@ -138,6 +147,8 @@ public class Table {
 
         return statements;
     }
+
+    public ArrayList<String> getReferenceTables() { return referenceTables; }
 
     @Override
     public String toString() {

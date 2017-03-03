@@ -6,9 +6,7 @@ import com.bulmanator.jdbc.Database.Table;
 import java.io.*;
 import java.sql.*;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 
 public class Main {
 
@@ -36,7 +34,7 @@ public class Main {
         }
 
         // Creates a connection to the database provided
-        Connection database = DriverManager.getConnection("jdbc:sqlite:Content/" + databaseName);
+        Connection database = DriverManager.getConnection("jdbc:sqlite:Databases/" + databaseName);
         if(database == null) return;
 
         // Gets the metadata for the entire database
@@ -53,14 +51,30 @@ public class Main {
             tables.add(new Table(tableName, metadata));
         }
 
-        tables.sort((t1, t2) -> t1.hasForeign() ? t2.hasForeign() ? 0 : 1 : -1);
 
+        // Sort the tables to make sure they get created in the right order
+        tables.sort((t1, t2) -> t1.hasForeign() ? t2.hasForeign() ? 0 : 1 : -1);
+        for(int i = 0; i < tables.size(); i++) {
+            Table one = tables.get(i);
+            if(!one.hasForeign()) continue;
+            for(int j = i + 1; j < tables.size(); j++) {
+                Table two = tables.get(j);
+                if(!two.hasForeign()) continue;
+
+                if(one.getReferenceTables().contains(two.getName())) {
+                    Collections.swap(tables, i, j);
+                }
+            }
+        }
+
+        // Print out all of the table create queries
         for(Table table : tables) {
             System.out.println(table.getCreateQuery());
         }
 
         System.out.println();
 
+        // Get all of the insert statements and then print them out
         for (Table table : tables) {
             ArrayList<String> statements = table.getInsertSatements(database.createStatement());
             for(String statement : statements) {
